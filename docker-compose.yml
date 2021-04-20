@@ -1,0 +1,57 @@
+version: "3.9"
+services:
+  app:
+    container_name: app
+    build:
+      context: ./application
+    networks:
+      - mynetwork
+    ports:
+      - "80:80"
+      - "8000:8000"
+
+  mysql57:
+    image: mysql:5.7
+    container_name: mysql57
+    networks:
+      - mynetwork
+    environment:
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_PASSWORD: 'password'
+    ports:
+      - '3308:3306'
+    expose:
+      - '3306'
+    volumes:
+      - ./db/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+      - my-db:/var/lib/mysql
+
+  mysql-exporter:
+    container_name: mysql57-exporter
+    image: prom/mysqld-exporter
+    networks:
+      - mynetwork
+    environment:
+      - DATA_SOURCE_NAME=exporter:password@(mysql57:3306)/
+    ports:
+      - "9104:9104"
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - mynetwork
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+
+volumes:
+  my-db:
+
+networks:
+  mynetwork:
+    driver: bridge
